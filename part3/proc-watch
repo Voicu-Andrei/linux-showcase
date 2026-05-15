@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# proc-watch — poll /proc/<pid>/status until the process disappears.
+#
+# Usage: proc-watch <pid>
+#
+# Demonstrates that "is this process still alive?" needs no special syscall:
+# the kernel exposes the answer as a file under /proc, so the test reduces
+# to '[ -r /proc/<pid>/status ]'.
+
+set -u
+
+if [ "$#" -ne 1 ]; then
+  echo "Usage: $(basename "$0") <pid>" >&2
+  exit 2
+fi
+
+PID=$1
+STATUS=/proc/$PID/status
+
+if [ ! -r "$STATUS" ]; then
+  echo "proc-watch: PID $PID is not running (no $STATUS)" >&2
+  exit 1
+fi
+
+NAME=$(awk -F'\t' '/^Name:/ {print $2; exit}' "$STATUS")
+echo "Watching PID $PID ($NAME) — sampling /proc/$PID/status every 1s"
+
+START=$(date +%s)
+while [ -r "$STATUS" ]; do
+  STATE=$(awk -F'\t' '/^State:/ {print $2; exit}' "$STATUS" 2>/dev/null || echo "?")
+  printf "  [%s] PID %s state: %s\n" "$(date +%H:%M:%S)" "$PID" "$STATE"
+  sleep 1
+done
+END=$(date +%s)
+
+echo "PID $PID ($NAME) is gone after $((END - START))s"
