@@ -1,10 +1,6 @@
-# Part 3 — A shell-script `/proc` watcher
+# Part 3 — Cheat Sheet
 
-**Presenter C · ~2 minutes**
-
-**Goal.** Build the smallest useful tool that polls `/proc/<pid>/status`
-in a loop and reports when the process disappears. Then make it
-executable, put it on `$PATH`, and run it from anywhere.
+**Single terminal · ~2 minutes**
 
 ## 1. Read the script
 
@@ -12,33 +8,25 @@ executable, put it on `$PATH`, and run it from anywhere.
 cat part3/proc-watch
 ```
 
-Walk the audience through the three lines that matter:
+The three lines that matter:
 
-- **`STATUS=/proc/$PID/status`** — the file the kernel exposes for this PID.
-- **`while [ -r "$STATUS" ]; do ... done`** — the loop runs as long as the
-  status file is readable. The instant the process exits, the kernel
-  removes the `/proc/<pid>/` entry, the test fails, the loop exits.
-- **`awk -F'\t' '/^State:/ {print $2; exit}'`** — pull just the State line
-  so we can show the process going `S` → `R` → `Z` → gone.
+- `STATUS=/proc/$PID/status` — the file the kernel exposes for this PID
+- `while [ -r "$STATUS" ]; do ... done` — loop ends when the file vanishes
+- `awk -F'\t' '/^State:/'` — pull the state line each tick
 
-Talking point: this script makes **no syscall the kernel doesn't already
-expose as a file**. No `ptrace`, no `kill -0` race, just `cat` and `[`.
+> No `ptrace`, no `kill -0` race, no signal handler. Just file I/O on
+> something the kernel synthesizes.
 
-## 2. Confirm it's executable and on `$PATH`
-
-`setup.sh` already ran `chmod +x` on it and symlinked it into
-`~/.local/bin/`.
+## 2. Confirm it's on `$PATH`
 
 ```bash
-ls -l ~/.local/bin/proc-watch
 which proc-watch
 ```
 
-If `which` prints nothing, the bin dir isn't on PATH in this shell:
+If nothing prints:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-which proc-watch
 ```
 
 ## 3. Run it from a different directory
@@ -50,33 +38,42 @@ proc-watch $!
 ```
 
 You'll see one line per second showing the State (`S` while `sleep` is
-blocked, occasionally `R`), then a final `PID ... is gone` after 30s.
+blocked), then `is gone` after 30 s.
 
-## 4. Try it on something that turns into a zombie
-
-This connects back to Part 2. In one terminal:
+Return to the repo:
 
 ```bash
-~/path/to/repo/part2/zombie-maker.sh
+cd -
 ```
 
-Note the **child** PID it prints. In another terminal:
+## 4. (Optional) Watch a zombie disappear
+
+This connects back to Part 2. Schedule the parent's death so the watcher
+gets a clean ending:
 
 ```bash
-proc-watch <child pid>
+./part2/zombie-maker.sh &
+sleep 1.5
+Z=$(cat scratch/zombie-child.pid)
+P=$(cat scratch/zombie-parent.pid)
+( sleep 5; kill $P ) &
+proc-watch $Z
 ```
 
-You'll see the State flip to `Z (zombie)` and stay there until you
-`kill` the parent — at which point the zombie is reaped and `proc-watch`
-prints `is gone`.
+The watcher prints `Z (zombie)` each second, then `is gone` once init
+reaps the orphan.
 
-## 5. Tie it back to OS internals (closer)
+## 5. Tie back to OS internals
 
 Three takeaways for the rubric:
 
 1. **`/proc` is a kernel-side filesystem.** Every read is answered by
    kernel code, not by disk I/O.
-2. **A file disappearing means a process exited.** The kernel's process
-   lifecycle is reflected directly in the filesystem namespace.
-3. **The Unix "everything is a file" philosophy is what lets a 20-line
-   shell script do a job that would be syscalls and signal handlers in C.**
+2. **A file disappearing means a process exited.** Process lifecycle
+   is reflected directly in the filesystem namespace.
+3. **"Everything is a file"** is what lets a 20-line shell script do
+   work that would be syscalls and signal handlers in C.
+
+---
+
+End of demo.

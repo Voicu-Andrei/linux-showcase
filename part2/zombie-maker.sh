@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # zombie-maker.sh — deliberately produce a zombie process for Part 2.
 #
+# Designed to be backgrounded: `./zombie-maker.sh &`.
+#
 # Strategy:
 #   1. Fork a child that exits after ~1 second.
 #   2. Immediately exec the parent into `sleep infinity`. After exec, the
@@ -12,27 +14,16 @@
 
 set -u
 
+SCRATCH="$(cd "$(dirname "$0")/.." && pwd)/scratch"
+mkdir -p "$SCRATCH"
+
 (sleep 1; exit 0) &
 CHILD=$!
 
-cat <<EOF
-Zombie maker armed.
+echo "$$"    > "$SCRATCH/zombie-parent.pid"
+echo "$CHILD" > "$SCRATCH/zombie-child.pid"
 
-  Parent PID: $$
-  Child  PID: $CHILD
-
-In ~1 second the child exits. The parent is about to exec into
-'sleep infinity', which never calls wait() — so the child becomes a
-zombie and stays one until the parent is killed.
-
-In another terminal, try:
-  ps -o pid,ppid,stat,comm,cmd -p $CHILD
-  grep -E '^(Name|State|PPid):' /proc/$CHILD/status
-
-To reap the zombie, kill the parent:
-  kill $$
-
-EOF
+echo "[part2] zombie maker armed: parent=$$  child=$CHILD  (PIDs in scratch/)"
 
 # Replace this shell with sleep. Same PID, no SIGCHLD handler, no wait().
 exec sleep infinity

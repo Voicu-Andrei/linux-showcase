@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # launch-target.sh — start a long-running process whose /proc/<pid>/
 # entry is interesting to inspect for Part 1 of the demo.
+#
+# Designed to be backgrounded: `./launch-target.sh &` then `T=$!`.
 
 set -u
 
@@ -26,26 +28,12 @@ fi
 exec 3< /etc/hostname
 exec 4< /etc/os-release
 
-LOG="$(cd "$(dirname "$0")/.." && pwd)/scratch/launch-target.log"
-mkdir -p "$(dirname "$LOG")"
-exec 5> "$LOG"
+SCRATCH="$(cd "$(dirname "$0")/.." && pwd)/scratch"
+mkdir -p "$SCRATCH"
+exec 5> "$SCRATCH/launch-target.log"
+echo "$$" > "$SCRATCH/target.pid"
 
-cat <<EOF
-Target process up.
-
-  PID:  $$
-  Log:  $LOG
-
-In another terminal, copy the PID and try:
-  T=$$
-  ls    /proc/\$T/
-  cat   /proc/\$T/cmdline | tr '\0' ' '; echo
-  grep  -E '^(Name|State|Pid|PPid|VmRSS|Threads):' /proc/\$T/status
-  cat   /proc/\$T/environ | tr '\0' '\n' | grep '^DEMO_'
-  ls -l /proc/\$T/fd/
-
-Press Ctrl+C here when you're done with Part 1.
-EOF
+echo "[part1] target up: PID=$$  (scratch/target.pid)"
 
 # Park the shell so the PID stays observable. The inner sleep is a child
 # process of this bash; bash itself is what /proc/<pid>/ describes.
