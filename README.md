@@ -32,6 +32,11 @@ cat part1/README.md
 
 Each room tells you exactly what to type and points you to the next.
 
+> **Studying for the presentation?** Open [`THEORY.md`](THEORY.md) —
+> it's the full study guide: what each `/proc` field means, the process
+> lifecycle, zombies, why PID 1 reaps, plus likely professor questions
+> for each part.
+
 > **Run everything from the repo root** in **one terminal**. The demos
 > use `&` to background long-running processes; you don't need a second
 > shell.
