@@ -33,12 +33,21 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ```bash
 cd /tmp
-sleep 30 &
+sleep 8 &
 proc-watch $!
 ```
 
 You'll see one line per second showing the State (`S` while `sleep` is
-blocked), then `is gone` after 30 s.
+blocked), then `is gone` after about 8 s.
+
+Expected shape:
+
+```text
+Watching PID 1234 (sleep)
+[12:00:01] S (sleeping)
+[12:00:02] S (sleeping)
+PID 1234 (sleep) is gone after 8s
+```
 
 Return to the repo:
 
@@ -75,5 +84,18 @@ Three takeaways for the rubric:
    work that would be syscalls and signal handlers in C.
 
 ---
+
+## What to say if asked
+
+**Why does the script watch `/proc/<pid>/status`?** That file exists while
+the process has a kernel task entry. When it disappears, the process has
+been reaped.
+
+**Is this production-grade monitoring?** No. It polls once per second and
+can race with PID reuse. Modern Linux can use `pidfd_open` for a stronger
+handle to one exact process.
+
+**Why does it still show zombies?** A zombie still has a process table
+entry, so `/proc/<pid>/status` remains until the zombie is reaped.
 
 End of demo.

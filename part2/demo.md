@@ -2,6 +2,27 @@
 
 **Single terminal · ~2 minutes**
 
+## Big picture
+
+```
+fork()
+  |
+  v
+child runs
+  |
+  v
+child exits
+  |
+  v
+zombie: PID + exit status kept
+  |
+  v
+parent wait() or PID 1 wait()
+  |
+  v
+reaped: process table slot freed
+```
+
 ## 0. Quick framing (10 seconds)
 
 When a child exits, the kernel must keep its exit status until the parent
@@ -29,6 +50,13 @@ ps -o pid,ppid,stat,comm,cmd -p $Z
 
 `STAT` shows `Z`. `CMD` ends with `<defunct>`.
 
+Expected shape:
+
+```text
+    PID    PPID STAT COMMAND         CMD
+   1235    1234 Z    zombie-maker.sh [zombie-maker.s] <defunct>
+```
+
 ## 3. Show the kernel's view
 
 ```bash
@@ -38,6 +66,14 @@ grep -E '^(Name|State|PPid):' /proc/$Z/status
 `State: Z (zombie)`. The exit code is sitting in the parent's task
 struct, waiting to be read. The PID can't be recycled.
 
+Expected shape:
+
+```text
+Name:   zombie-maker.s
+State:  Z (zombie)
+PPid:   1234
+```
+
 ## 4. Show the unhelpful parent
 
 ```bash
@@ -45,6 +81,12 @@ ps -o pid,stat,comm,cmd -p $P
 ```
 
 It's `sleep infinity`. No SIGCHLD handler. No `wait()` call. Ever.
+
+The maker also writes a combined summary:
+
+```bash
+cat scratch/zombie-demo.env
+```
 
 ## 5. Reap the zombie by killing the parent
 
@@ -62,5 +104,16 @@ immediately called `wait()` on it.
 > This is exactly why.
 
 ---
+
+## What to say if asked
+
+**Is a zombie still running?** No. It has exited. Only a small kernel record
+remains so the parent can read the exit status.
+
+**Why can we not kill a zombie?** Signals go to running processes. A zombie
+has no code left to run, so it disappears only after `wait()`.
+
+**Why does PID 1 matter?** When a parent dies, its children are reparented
+to PID 1. PID 1 must reap orphaned zombies.
 
 Next room → `cat part3/README.md`

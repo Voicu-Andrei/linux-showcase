@@ -2,6 +2,20 @@
 
 **Single terminal · ~2 minutes**
 
+## Big picture
+
+```
+kernel task_struct
+        |
+        v
+     procfs
+        |
+        v
+ /proc/<pid>/status
+ /proc/<pid>/cmdline
+ /proc/<pid>/fd/
+```
+
 ## 1. Start the target in the background
 
 ```bash
@@ -28,6 +42,12 @@ tr '\0' ' ' < /proc/$T/cmdline; echo
 
 Args are NUL-separated; `tr` makes them readable.
 
+Expected shape:
+
+```text
+bash ./part1/launch-target.sh
+```
+
 ## 4. `status` — human-readable metadata
 
 ```bash
@@ -38,6 +58,21 @@ grep -E '^(Name|State|Pid|PPid|VmRSS|Threads):' /proc/$T/status
 - `PPid` — the shell that ran `./launch-target.sh`
 - `VmRSS` — resident memory in KB
 - `Threads` — 1 for plain bash
+
+Expected shape:
+
+```text
+Name:   bash
+State:  S (sleeping)
+Pid:    1234
+PPid:   1200
+VmRSS:  3000 kB
+Threads:        1
+```
+
+`status` is meant for humans. `/proc/$T/stat` contains overlapping
+information in a compact machine-readable format, which is easier for
+tools like `ps` to parse but harder to explain live.
 
 ## 5. `environ` — env vars at `execve()` time
 
@@ -67,6 +102,13 @@ readlink /proc/$T/fd/3
 readlink /proc/$T/fd/5
 ```
 
+Expected shape:
+
+```text
+/etc/hostname
+/home/student/linux-showcase/scratch/launch-target.log
+```
+
 > Talking point: this is exactly how `lsof` works under the hood — it
 > walks `/proc/*/fd/`.
 
@@ -80,5 +122,16 @@ ls /proc/$T 2>&1 | head -1
 The directory disappears the instant the process is reaped.
 
 ---
+
+## What to say if asked
+
+**Why is `/proc` not stored on disk?** Because the data changes constantly.
+The kernel generates it on demand from live process state.
+
+**Why are arguments separated by NUL bytes?** That matches how `execve()`
+receives `argv`: an array of NUL-terminated strings.
+
+**What is the difference between `status` and `stat`?** `status` is
+human-readable. `stat` is compact and machine-readable, so tools prefer it.
 
 Next room → `cat part2/README.md`

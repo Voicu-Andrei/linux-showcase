@@ -23,12 +23,12 @@ if [ ! -r "$STATUS" ]; then
 fi
 
 NAME=$(awk -F'\t' '/^Name:/ {print $2; exit}' "$STATUS")
-echo "Watching PID $PID ($NAME) — sampling /proc/$PID/status every 1s"
+echo "Watching PID $PID ($NAME)"
 
 START=$(date +%s)
 while [ -r "$STATUS" ]; do
   STATE=$(awk -F'\t' '/^State:/ {print $2; exit}' "$STATUS" 2>/dev/null || echo "?")
-  printf "  [%s] PID %s state: %s\n" "$(date +%H:%M:%S)" "$PID" "$STATE"
+  printf "[%s] %s\n" "$(date +%H:%M:%S)" "$STATE"
   sleep 1
 done
 END=$(date +%s)

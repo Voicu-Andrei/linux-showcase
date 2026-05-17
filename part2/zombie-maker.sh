@@ -22,6 +22,12 @@ CHILD=$!
 
 echo "$$"    > "$SCRATCH/zombie-parent.pid"
 echo "$CHILD" > "$SCRATCH/zombie-child.pid"
+cat > "$SCRATCH/zombie-demo.env" <<EOF
+parent=$$
+child=$CHILD
+expected_state=Z
+cleanup=kill $$
+EOF
 
 echo "[part2] zombie maker armed: parent=$$  child=$CHILD  (PIDs in scratch/)"
 
